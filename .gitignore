@@ -1,0 +1,15 @@
+# OpenTofu
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+
+# Local values (IDs, e-mail) – environment .tfvars files ARE committed, without IDs
+terraform.tfvars
+*.auto.tfvars
+.env
+.envrc
+
+# macOS
+.DS_Store
