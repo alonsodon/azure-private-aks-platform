@@ -11,5 +11,9 @@ terraform.tfvars
 .env
 .envrc
 
+# Local workspaces of the bootstrap and per-target values
+terraform.tfstate.d/
+*.local.tfvars
+
 # macOS
 .DS_Store
