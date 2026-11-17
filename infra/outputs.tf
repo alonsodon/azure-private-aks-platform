@@ -17,3 +17,11 @@ output "storage_private_ip" {
 output "aks_subnet_id" {
   value = module.network.aks_subnet_id
 }
+
+output "aks_name" {
+  value = module.aks.name
+}
+
+output "demo_client_id" {
+  value = module.demo_identity.client_id
+}

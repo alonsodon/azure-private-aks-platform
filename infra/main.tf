@@ -60,3 +60,39 @@ module "storage" {
   private_dns_zone_id           = module.network.private_dns_zone_ids["blob"]
   tags                          = local.tags
 }
+
+module "aks" {
+  source = "../modules/aks"
+
+  name_prefix          = local.name_prefix
+  resource_group_name  = data.azurerm_resource_group.this.name
+  location             = var.location
+  tenant_id            = data.azurerm_client_config.current.tenant_id
+  subnet_id            = module.network.aks_subnet_id
+  node_vm_size         = var.aks_node_vm_size
+  node_count           = var.aks_node_count
+  os_disk_size_gb      = var.aks_os_disk_size_gb
+  pod_cidr             = var.aks_pod_cidr
+  service_cidr         = var.aks_service_cidr
+  dns_service_ip       = var.aks_dns_service_ip
+  authorized_ip_ranges = var.allowed_ip_cidrs
+  tags                 = local.tags
+}
+
+# Identity of the demo pod (and, in variant A, of the secrets operator)
+module "demo_identity" {
+  source = "../modules/workload-identity"
+
+  name                 = "${local.name_prefix}-demo"
+  resource_group_name  = data.azurerm_resource_group.this.name
+  location             = var.location
+  oidc_issuer_url      = module.aks.oidc_issuer_url
+  namespace            = "demo"
+  service_account_name = "kv-reader"
+  tags                 = local.tags
+
+  role_assignments = {
+    kv_secrets = { scope = module.key_vault.id, role = "Key Vault Secrets User" }
+    app_blob   = { scope = module.storage.id, role = "Storage Blob Data Contributor" }
+  }
+}

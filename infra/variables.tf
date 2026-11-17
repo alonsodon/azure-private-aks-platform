@@ -78,3 +78,31 @@ variable "storage_public_network_access_enabled" {
   type        = bool
   default     = false
 }
+
+variable "aks_node_vm_size" {
+  description = "Node size; Standard_D2as_v5 is the checked fallback (D33)"
+  type        = string
+  default     = "Standard_D2s_v5"
+}
+
+variable "aks_node_count" {
+  type    = number
+  default = 1
+}
+
+variable "aks_os_disk_size_gb" {
+  type    = number
+  default = 64
+}
+
+variable "aks_pod_cidr" {
+  type = string
+}
+
+variable "aks_service_cidr" {
+  type = string
+}
+
+variable "aks_dns_service_ip" {
+  type = string
+}
