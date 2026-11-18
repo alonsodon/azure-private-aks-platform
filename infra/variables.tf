@@ -106,3 +106,9 @@ variable "aks_service_cidr" {
 variable "aks_dns_service_ip" {
   type = string
 }
+
+variable "runner_ip_cidrs" {
+  description = "Set only by the pipeline: the GitHub runner's public IP, allowed through the Key Vault firewall for one job (D41)"
+  type        = list(string)
+  default     = []
+}

@@ -1,0 +1,55 @@
+name: infra-plan
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ["infra/**", "modules/**", ".github/**"]
+
+permissions:
+  id-token: write # lets GitHub issue the OIDC token that Entra ID exchanges
+  contents: read
+
+concurrency:
+  group: infra-dev # never two runs against the dev state at once
+  cancel-in-progress: false
+
+env:
+  ARM_USE_OIDC: "true"
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  TF_STATE_RESOURCE_GROUP: ${{ secrets.TF_STATE_RESOURCE_GROUP }}
+  TF_STATE_STORAGE_ACCOUNT: ${{ vars.TF_STATE_STORAGE_ACCOUNT }}
+  TF_VAR_subscription_id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  TF_VAR_resource_group_name: ${{ secrets.TF_STATE_RESOURCE_GROUP }}
+  TF_VAR_location: ${{ vars.LOCATION }}
+  TF_VAR_allowed_ip_cidrs: ${{ secrets.ADMIN_IP_CIDRS }}
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  plan-dev:
+    name: plan (dev)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash # explicit bash = -eo pipefail: a failing tofu in a pipe fails the step
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: init
+        uses: ./.github/actions/tofu-init
+        with:
+          stage: dev
+
+      - run: tofu fmt -check -recursive ..
+      - run: tofu validate -no-color
+
+      - name: tofu plan
+        run: |
+          tofu plan -input=false -no-color -lock-timeout=5m -var-file=environments/dev.tfvars | tee plan.txt
+          { echo '### tofu plan (dev)'; echo '```'; tail -n 40 plan.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Close the Key Vault firewall
+        if: always() && steps.init.outputs.key_vault != ''
+        run: az keyvault network-rule remove --name "${{ steps.init.outputs.key_vault }}" --ip-address "${{ steps.init.outputs.runner_ip }}/32" -o none
