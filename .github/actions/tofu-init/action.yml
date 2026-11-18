@@ -50,7 +50,7 @@ runs:
         echo "runner_ip=${RUNNER_IP}" >> "$GITHUB_OUTPUT"
         # Desired state includes the runner IP too, so OpenTofu sees no drift
         echo "TF_VAR_runner_ip_cidrs=[\"${RUNNER_IP}/32\"]" >> "$GITHUB_ENV"
-        KV=$(tofu output -raw key_vault_name 2>/dev/null || true)
+        KV=$(tofu output -json | jq -r '.key_vault_name.value // empty') # '' when the state has no outputs yet
         echo "key_vault=${KV}" >> "$GITHUB_OUTPUT"
         if [ -n "$KV" ]; then
           az keyvault network-rule add --name "$KV" --ip-address "${RUNNER_IP}/32" -o none
