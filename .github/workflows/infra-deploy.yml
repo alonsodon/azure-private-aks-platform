@@ -1,0 +1,79 @@
+name: infra-deploy
+
+on:
+  push:
+    branches: [main]
+    paths: ["infra/**", "modules/**", ".github/**"]
+  workflow_dispatch: {} # manual run from the Actions tab
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: infra-deploy
+  cancel-in-progress: false
+
+env:
+  ARM_USE_OIDC: "true"
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  TF_STATE_RESOURCE_GROUP: ${{ secrets.TF_STATE_RESOURCE_GROUP }}
+  TF_STATE_STORAGE_ACCOUNT: ${{ vars.TF_STATE_STORAGE_ACCOUNT }}
+  TF_VAR_subscription_id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  TF_VAR_resource_group_name: ${{ secrets.TF_STATE_RESOURCE_GROUP }}
+  TF_VAR_location: ${{ vars.LOCATION }}
+  TF_VAR_allowed_ip_cidrs: ${{ secrets.ADMIN_IP_CIDRS }}
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  apply-dev:
+    name: apply (dev)
+    runs-on: ubuntu-latest
+    environment: dev # token subject becomes environment:dev; only main may deploy here
+    defaults:
+      run:
+        shell: bash
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: init
+        uses: ./.github/actions/tofu-init
+        with:
+          stage: dev
+
+      # Apply exactly the plan computed in this job, not a fresh one
+      - run: tofu plan -input=false -no-color -lock-timeout=5m -var-file=environments/dev.tfvars -out=dev.tfplan
+      - run: tofu apply -input=false -no-color -lock-timeout=5m dev.tfplan
+
+      - name: Close the Key Vault firewall
+        if: always() && steps.init.outputs.key_vault != ''
+        run: az keyvault network-rule remove --name "${{ steps.init.outputs.key_vault }}" --ip-address "${{ steps.init.outputs.runner_ip }}/32" -o none
+
+  plan-prod:
+    name: plan (prod)
+    needs: apply-dev
+    runs-on: ubuntu-latest
+    environment: prod # waits for a reviewer before the job starts
+    defaults:
+      run:
+        shell: bash
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: init
+        uses: ./.github/actions/tofu-init
+        with:
+          stage: prod
+
+      - name: tofu plan
+        run: |
+          tofu plan -input=false -no-color -lock-timeout=5m -var-file=environments/prod.tfvars | tee plan.txt
+          { echo '### tofu plan (prod)'; echo '```'; tail -n 40 plan.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Close the Key Vault firewall
+        if: always() && steps.init.outputs.key_vault != ''
+        run: az keyvault network-rule remove --name "${{ steps.init.outputs.key_vault }}" --ip-address "${{ steps.init.outputs.runner_ip }}/32" -o none

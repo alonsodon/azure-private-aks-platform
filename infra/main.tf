@@ -40,7 +40,7 @@ module "key_vault" {
   resource_group_name        = data.azurerm_resource_group.this.name
   location                   = var.location
   tenant_id                  = data.azurerm_client_config.current.tenant_id
-  allowed_ip_cidrs           = var.allowed_ip_cidrs
+  allowed_ip_cidrs           = concat(var.allowed_ip_cidrs, var.runner_ip_cidrs) # deployer + current runner
   pe_subnet_id               = module.network.pe_subnet_id
   private_dns_zone_id        = module.network.private_dns_zone_ids["key_vault"]
   soft_delete_retention_days = var.kv_soft_delete_retention_days
