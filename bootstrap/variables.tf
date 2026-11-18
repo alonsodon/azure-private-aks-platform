@@ -30,10 +30,10 @@ variable "project" {
   }
 }
 
-variable "github_repository" {
-  description = "GitHub repository allowed to deploy, as owner/name"
+variable "github_oidc_subject_repo" {
+  description = "Repository part of GitHub's OIDC subject claim: owner@owner_id/repo@repo_id (immutable IDs, as GitHub sends them)"
   type        = string
-  default     = "alonsodon/azure-private-aks-platform"
+  default     = "alonsodon@78383101/azure-private-aks-platform@1458197954"
 }
 
 variable "create_budget" {
@@ -59,3 +59,4 @@ variable "alert_emails" {
   type        = list(string)
   default     = []
 }
+
