@@ -14,7 +14,12 @@ terraform {
 }
 
 provider "azurerm" {
-  features {}
+  features {
+    key_vault {
+      # Purging needs subscription-level rights; with RG-only access we leave the vault soft-deleted (random suffix avoids name clashes)
+      purge_soft_delete_on_destroy = false
+    }
+  }
   subscription_id                 = var.subscription_id
   resource_provider_registrations = "none" # D11
   storage_use_azuread             = true
