@@ -23,4 +23,4 @@ provider "azurerm" {
   subscription_id                 = var.subscription_id
   resource_provider_registrations = "none" # D11
   storage_use_azuread             = true
-}# pipeline verification 2026-11-22
+}
