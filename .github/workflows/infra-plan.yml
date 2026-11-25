@@ -24,6 +24,7 @@ env:
   TF_VAR_resource_group_name: ${{ secrets.TF_STATE_RESOURCE_GROUP }}
   TF_VAR_location: ${{ vars.LOCATION }}
   TF_VAR_allowed_ip_cidrs: ${{ secrets.ADMIN_IP_CIDRS }}
+  TF_VAR_state_passphrase: ${{ secrets.TOFU_STATE_PASSPHRASE }} # D42: decrypts state and saved plans
   TF_IN_AUTOMATION: "true"
 
 jobs:

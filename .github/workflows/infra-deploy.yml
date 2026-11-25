@@ -25,13 +25,16 @@ env:
   TF_VAR_resource_group_name: ${{ secrets.TF_STATE_RESOURCE_GROUP }}
   TF_VAR_location: ${{ vars.LOCATION }}
   TF_VAR_allowed_ip_cidrs: ${{ secrets.ADMIN_IP_CIDRS }}
+  TF_VAR_state_passphrase: ${{ secrets.TOFU_STATE_PASSPHRASE }} # D42: decrypts state and saved plans
   TF_IN_AUTOMATION: "true"
 
 jobs:
-  apply-dev:
-    name: apply (dev)
+  plan-dev:
+    name: plan (dev)
     runs-on: ubuntu-latest
-    environment: dev # token subject becomes environment:dev; only main may deploy here
+    environment: dev-plan # token subject environment:dev-plan; no approval, main only
+    outputs:
+      runner_ip: ${{ steps.init.outputs.runner_ip }} # apply-dev removes it from the Key Vault firewall too
     defaults:
       run:
         shell: bash
@@ -44,13 +47,58 @@ jobs:
         with:
           stage: dev
 
-      # Apply exactly the plan computed in this job, not a fresh one
-      - run: tofu plan -input=false -no-color -lock-timeout=5m -var-file=environments/dev.tfvars -out=dev.tfplan
-      - run: tofu apply -input=false -no-color -lock-timeout=5m dev.tfplan
+      - name: tofu plan
+        run: |
+          tofu plan -input=false -no-color -lock-timeout=5m -var-file=environments/dev.tfvars -out=dev.tfplan | tee plan.txt
+          { echo '### tofu plan (dev)'; echo '```'; tail -n 40 plan.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      # The saved plan is encrypted (D42), so it can travel as an artifact; keep it only briefly
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dev-tfplan
+          path: infra/dev.tfplan
+          retention-days: 1
+          if-no-files-found: error
 
       - name: Close the Key Vault firewall
         if: always() && steps.init.outputs.key_vault != ''
         run: az keyvault network-rule remove --name "${{ steps.init.outputs.key_vault }}" --ip-address "${{ steps.init.outputs.runner_ip }}/32" -o none
+
+  apply-dev:
+    name: apply (dev)
+    needs: plan-dev
+    runs-on: ubuntu-latest
+    environment: dev # waits for a reviewer; token subject environment:dev
+    defaults:
+      run:
+        shell: bash
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: init
+        uses: ./.github/actions/tofu-init
+        with:
+          stage: dev
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dev-tfplan
+          path: infra
+
+      # Exactly the reviewed plan; OpenTofu refuses it if the state changed in between ("stale plan")
+      - run: tofu apply -input=false -no-color -lock-timeout=5m dev.tfplan
+
+      # Read the vault name AFTER apply: on a first deploy it only exists now.
+      # Remove both runner IPs: the saved plan may have written the plan runner's IP.
+      - name: Close the Key Vault firewall (this runner and the plan runner)
+        if: always()
+        run: |
+          KV=$(tofu output -json | jq -r '.key_vault_name.value // empty')
+          [ -z "$KV" ] && exit 0
+          for IP in "${{ steps.init.outputs.runner_ip }}" "${{ needs.plan-dev.outputs.runner_ip }}"; do
+            az keyvault network-rule remove --name "$KV" --ip-address "${IP}/32" -o none || true
+          done
 
   plan-prod:
     name: plan (prod)

@@ -112,3 +112,9 @@ variable "runner_ip_cidrs" {
   type        = list(string)
   default     = []
 }
+
+variable "state_passphrase" {
+  description = "Passphrase for state and plan encryption; only via TF_VAR_state_passphrase, never in files"
+  type        = string
+  sensitive   = true
+}

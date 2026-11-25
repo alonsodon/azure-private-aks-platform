@@ -1,5 +1,5 @@
 name: tofu-init
-description: Install OpenTofu, log in to Azure with OIDC, initialise infra/ for one stage and open the Key Vault firewall for this runner
+description: Mask admin IP, install OpenTofu, log in to Azure with OIDC, initialise infra/ for one stage and open the Key Vault firewall for this runner
 
 inputs:
   stage:
@@ -17,6 +17,14 @@ outputs:
 runs:
   using: composite
   steps:
+    # GitHub only masks a secret verbatim; mask each admin IP on its own so plans never show it
+    - name: Mask admin IPs in logs
+      shell: bash
+      run: |
+        for ip in $(echo "${TF_VAR_allowed_ip_cidrs:-[]}" | jq -r '.[]' | cut -d/ -f1); do
+          echo "::add-mask::${ip}"
+        done
+
     - uses: opentofu/setup-opentofu@v1
       with:
         tofu_version: 1.13.1
