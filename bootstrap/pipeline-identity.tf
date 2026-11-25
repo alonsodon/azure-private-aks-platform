@@ -8,9 +8,10 @@ resource "azurerm_user_assigned_identity" "pipeline" {
 # Which GitHub tokens Entra ID accepts for this identity (D21)
 locals {
   github_subjects = {
-    pull-request = "repo:${var.github_oidc_subject_repo}:pull_request"     # plan on pull requests
-    env-dev      = "repo:${var.github_oidc_subject_repo}:environment:dev"  # apply to dev
-    env-prod     = "repo:${var.github_oidc_subject_repo}:environment:prod" # plan for prod, with approval
+    pull-request = "repo:${var.github_oidc_subject_repo}:pull_request"         # plan on pull requests
+    env-dev      = "repo:${var.github_oidc_subject_repo}:environment:dev"      # apply to dev
+    env-dev-plan = "repo:${var.github_oidc_subject_repo}:environment:dev-plan" # plan on main, no approval
+    env-prod     = "repo:${var.github_oidc_subject_repo}:environment:prod"     # plan for prod, with approval
   }
 }
 
