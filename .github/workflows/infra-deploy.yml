@@ -86,8 +86,9 @@ jobs:
           name: dev-tfplan
           path: infra
 
-      # Exactly the reviewed plan; OpenTofu refuses it if the state changed in between ("stale plan")
-      - run: tofu apply -input=false -no-color -lock-timeout=5m dev.tfplan
+      # Exactly the reviewed plan; OpenTofu refuses it if the state changed in between ("stale plan").
+      # Drop this runner's IP variable: the plan carries its own value and a different one is rejected.
+      - run: env -u TF_VAR_runner_ip_cidrs tofu apply -input=false -no-color -lock-timeout=5m dev.tfplan
 
       # Read the vault name AFTER apply: on a first deploy it only exists now.
       # Remove both runner IPs: the saved plan may have written the plan runner's IP.
