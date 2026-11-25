@@ -4,7 +4,7 @@ variable "subscription_id" {
 }
 
 variable "resource_group_name" {
-  description = "Existing resource group (provided by PRODYNA)"
+  description = "Existing resource group (pre-provisioned; this setup only needs resource-group rights)"
   type        = string
 }
 

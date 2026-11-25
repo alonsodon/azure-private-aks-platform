@@ -19,7 +19,7 @@ provider "azurerm" {
   # Pinned per target via a git-ignored *.local.tfvars file
   subscription_id = var.subscription_id
 
-  # Only resource-group permissions in the PRODYNA subscription: no automatic provider registration (D11)
+  # Designed for resource-group-only permissions: no automatic provider registration (D11)
   resource_provider_registrations = "none"
 
   # The state account has no access keys: talk to Storage with Entra ID tokens

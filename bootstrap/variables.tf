@@ -9,7 +9,7 @@ variable "subscription_id" {
 }
 
 variable "resource_group_name" {
-  description = "Existing resource group to deploy into (provided by PRODYNA)"
+  description = "Existing resource group to deploy into (pre-provisioned; only resource-group rights needed)"
   type        = string
 }
 
